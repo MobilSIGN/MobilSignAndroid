@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout  xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" >
+
+    <ListView
+        android:id="@+id/listView"
+        android:layout_width="fill_parent"
+        android:layout_height="376dp" >
+    </ListView>
+
+    <Button
+        android:id="@+id/btn_Send"
+        android:layout_width="100px"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_weight="0.2"
+        android:text="Send" />
+
+    <EditText
+        android:id="@+id/txt_inputText"
+        android:layout_width="125px"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/btn_Send"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_weight="0.8"
+        android:ems="10"
+        android:text="Text here" >
+
+        <requestFocus />
+    </EditText>
+
+    <Button
+        android:id="@+id/btnQR"
+        android:layout_width="100px"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:text="Scan QR code" />
+
+</RelativeLayout >
