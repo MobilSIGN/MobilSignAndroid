@@ -7,39 +7,44 @@
     <ListView
         android:id="@+id/listView"
         android:layout_width="fill_parent"
-        android:layout_height="376dp" >
+        android:layout_height="265dp">
     </ListView>
 
     <Button
         android:id="@+id/btn_Send"
-        android:layout_width="100px"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:layout_weight="0.2"
-        android:text="Send" />
+        android:text="Send"
+        android:clickable="false"
+        android:enabled="true"
+        android:textSize="35dp" />
 
     <EditText
         android:id="@+id/txt_inputText"
         android:layout_width="125px"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/btn_Send"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentRight="true"
         android:layout_weight="0.8"
         android:ems="10"
-        android:text="Text here" >
+        android:text="Text here"
+        android:layout_above="@+id/btn_Send"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true">
 
         <requestFocus />
     </EditText>
 
     <Button
         android:id="@+id/btnQR"
-        android:layout_width="100px"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentRight="true"
         android:text="Scan QR code"
-        android:layout_alignTop="@+id/btn_Send" />
+        android:layout_alignTop="@+id/btn_Send"
+        android:enabled="true"
+        android:textSize="20dp" />
 
 </RelativeLayout >

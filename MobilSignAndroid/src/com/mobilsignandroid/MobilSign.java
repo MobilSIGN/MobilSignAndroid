@@ -1,6 +1,8 @@
 package com.mobilsignandroid;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,16 +17,157 @@ import com.mobilsignandroid.communicator.Communicator;
 import com.mobilsignandroid.zxing.IntentIntegrator;
 import com.mobilsignandroid.zxing.IntentResult;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.security.MessageDigest;
 
 public class MobilSign extends Activity {
-
+    static final String ACCOUNT_FILE = "acount_info";
+    // TODO upravit atributy a vytvarat ich az tam kde treba
 	private Handler handler = new Handler();
 	private ListView msgView;
 	private ArrayAdapter<String> msgList; // list vsetkych sprav
-	private Communicator communicator = new Communicator("192.168.1.2", 2002, this);
+    private Communicator communicator;
+	//private Communicator communicator = new Communicator("192.168.1.2", 2002, this);
 
-	@Override
+    @Override
+    public void onCreate(Bundle savedInstanceState){
+        super.onCreate(savedInstanceState);
+        final AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this);
+        try{
+            if(fileExistance(ACCOUNT_FILE)) {
+                login();
+            } else{
+                register();
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+    }
+
+    /**
+     * Pokial je aplikacia spustena na zariadeni prvy krat, vypita si od pouzivatela PIN, ktorym sa bude do aplikacie prihlasovat.
+     * Ten sa ulozi do interneho uloziska telefonu
+     */
+    private void register(){
+        setContentView(R.layout.register);
+        final AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this);
+        // po kliku na tlacidlo prihlasit v registracnom layoute sa zaregistruje novy pin
+        Button btnRegister = (Button) findViewById(R.id.register);
+        btnRegister.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // ziska zadane piny z oboch poli
+                final EditText etPin1 = (EditText) findViewById(R.id.pin1);
+                String pin1 = etPin1.getText().toString();
+                final EditText etPin2 = (EditText) findViewById(R.id.pin2);
+                String pin2 = etPin2.getText().toString();
+
+                if(!pin1.equals(pin2)){
+                    dlgAlert.setMessage("Zadané PIN kódy nie sú rovnaké.Zadajte prosím rovnaké PIN kódy.");
+                    dlgAlert.setTitle("Chyba");
+                    dlgAlert.setPositiveButton("OK", null);
+                    dlgAlert.create().show();
+                } else{
+                    try{
+                        // TODO heslo treba hashovat a kontrolovat ci ma aspon 4 znaky
+                        FileOutputStream fos = openFileOutput(ACCOUNT_FILE, Context.MODE_PRIVATE);
+                        fos.write(pin1.getBytes());
+                        fos.close();
+                        dlgAlert.setMessage("Váš PIN kód bol uložený. Môžete sa prihlásiť.");
+                        dlgAlert.setTitle("Správa");
+                        dlgAlert.setPositiveButton("OK", null);
+                        dlgAlert.create().show();
+                        login();
+                    } catch (Exception e){
+                        dlgAlert.setMessage("code: 1");
+                        dlgAlert.setTitle("Chyba");
+                        dlgAlert.setPositiveButton("OK", null);
+                        dlgAlert.create().show();
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        });
+    }
+
+    private void login(){
+        // TODO comunicatior vytvara az ked je overene heslo
+        setContentView(R.layout.login);
+        final AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this);
+        msgList = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        communicator = new Communicator("192.168.1.2", 2002, this);
+
+        // po kliku na tlacidlo prihlasit v registracnom layoute sa zaregistruje novy pin
+        Button btnLogin = (Button) findViewById(R.id.login);
+        btnLogin.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                final EditText etPin = (EditText) findViewById(R.id.pin);
+                String pinGiven = etPin.getText().toString();
+                if(!pinGiven.equals(getPin(ACCOUNT_FILE))){
+                    dlgAlert.setMessage("PIN kód nie je správny. Zadajte prosím správny PIN kód.");
+                    dlgAlert.setTitle("Chyba");
+                    dlgAlert.setPositiveButton("OK", null);
+                    dlgAlert.create().show();
+                } else{
+                    setContentView(R.layout.main);
+
+                    msgView = (ListView) findViewById(R.id.listView);
+                    msgView.setAdapter(msgList);
+                    communicator.receiveMsg(); // spusti vlakno prijimajuce spravy
+
+                    Button btnSend = (Button) findViewById(R.id.btn_Send);
+                    btnSend.setOnClickListener(new View.OnClickListener() { // odosle spravu
+                        public void onClick(View v) {
+                            final EditText txtEdit = (EditText) findViewById(R.id.txt_inputText);
+                            String msgToSend = txtEdit.getText().toString();
+                            if(msgToSend != null){
+                                communicator.sendMessageToServer(msgToSend);
+                                msgView.smoothScrollToPosition(msgList.getCount() - 1);
+                            }
+                        }
+                    });
+
+                    Button btnQR = (Button) findViewById(R.id.btnQR);
+                    btnQR.setOnClickListener(new View.OnClickListener() {
+                        public void onClick(View v) {
+                            IntentIntegrator integrator = new IntentIntegrator(MobilSign.this);
+                            integrator.initiateScan();
+                        }
+                    });
+                }
+
+            }
+        });
+    }
+
+    private String getPin(String fileName) {
+        String pin = "";
+        try{
+            FileInputStream fis = openFileInput(fileName);
+            byte[] pinByte = new byte[fis.available()];
+            fis.read(pinByte);
+            fis.close();
+            for(int i=0;i<pinByte.length;i++)
+            {
+                pin += (char)pinByte[i];
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return pin;
+    }
+
+    private boolean fileExistance(String fname){
+        File file = getBaseContext().getFileStreamPath(fname);
+        return file.exists();
+    }
+
+    /*
+    @Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
@@ -55,7 +198,7 @@ public class MobilSign extends Activity {
             }
         });
 	}
-
+*/
     /**
      * Zobrazi spravu upravenu na spravny format
      * @param msg - neupravena sprava
