@@ -39,6 +39,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentRight="true"
-        android:text="Scan QR code" />
+        android:text="Scan QR code"
+        android:layout_alignTop="@+id/btn_Send" />
 
 </RelativeLayout >
