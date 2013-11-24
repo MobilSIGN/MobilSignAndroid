@@ -30,7 +30,6 @@ import java.util.StringTokenizer;
 
 public class MobilSign extends Activity {
     static final String ACCOUNT_FILE = "acount_info"; // nazov suboru s pouzivatelskymi informaciami
-    static final String GENERATE_SALT = "acount_info"; // sol na generovanie
 
     // prvky potrebne pre list sprav
 	private Handler handler;
@@ -50,8 +49,6 @@ public class MobilSign extends Activity {
 
         // inicializacia atributov potrebnych v celej triede
         this.handler = new Handler();
-        messageBox = new AlertDialog.Builder(this);
-
         try{
             // overi ci je aplikacia spustena prvy krat, pokial ano tak neexistuje subor s uzivatelskymi nastaveniami
             if(fileExistance(ACCOUNT_FILE)) {
@@ -383,7 +380,6 @@ public class MobilSign extends Activity {
 	 */
     private PublicKey getKeyFromModulus(String pModulus){
 		PublicKey key = null;
-		messageBox(pModulus,"asd0", "OK");
 		try{
 			BigInteger modulus = new BigInteger(pModulus, 16);
 			BigInteger exponent = new BigInteger("65537", 16); // exponent je vzdy 65537
