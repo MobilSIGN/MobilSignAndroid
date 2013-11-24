@@ -15,28 +15,53 @@ public class Communicator {
     private Listener clientListener;
     private MobilSign activity;
 
+    /********************** Konstruktory **********************/
     public Communicator(String serverAddress, int serverPort, MobilSign activity) {
         this.serverAddress = serverAddress;
         this.serverPort = serverPort;
         this.activity = activity;
-        this.connectToServer();
     }
+
+    public Communicator(MobilSign activity){
+        this.activity = activity;
+    }
+
+    /********************** Gettery, settery **********************/
+    public void setServerAddress(String serverAddress){
+        this.serverAddress = serverAddress;
+    }
+
+    public String getServerAddress(){
+        return this.serverAddress;
+    }
+
+    public void setServerPort(int serverPort){
+        this.serverPort = serverPort;
+    }
+
+    public int getServerPort(){
+        return this.serverPort;
+    }
+
+    /************************ Metody **********************/
 
     /**
      * Pripoji sa na server
      */
-    public void connectToServer() {
-        try {
+    public void connectToServer() throws IOException {
+       // try {
             this.socket = new Socket(this.serverAddress,this.serverPort);
             this.clientSender = new Sender(socket);
             this.clientListener = new Listener(socket);
             this.clientListener.start();
             this.clientSender.start();
+            /*
         } catch (IOException ioe) {
             System.err.println("Can not establish connection to " + serverAddress + ":" + serverPort + "\n" + ioe.getMessage());
             ioe.printStackTrace(System.out);
             System.exit(-1);
         }
+        */
         receiveMsg(); // spusti sa prijimanie sprav, pokial boli vyslane
     }
 

@@ -5,9 +5,10 @@
     android:orientation="vertical" >
 
     <ListView
-        android:id="@+id/listView"
+        android:id="@+id/msgQueue"
         android:layout_width="fill_parent"
-        android:layout_height="265dp">
+        android:layout_height="265dp"
+        android:choiceMode="none">
     </ListView>
 
     <Button
@@ -28,7 +29,6 @@
         android:layout_height="wrap_content"
         android:layout_weight="0.8"
         android:ems="10"
-        android:text="Text here"
         android:layout_above="@+id/btn_Send"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true">
