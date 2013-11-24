@@ -21,8 +21,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.math.BigInteger;
+import java.security.KeyFactory;
 import java.security.MessageDigest;
+import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.StringTokenizer;
 
 public class MobilSign extends Activity {
@@ -39,6 +42,7 @@ public class MobilSign extends Activity {
 
     // vypisuje hlasky
     private AlertDialog.Builder messageBox;
+    private PublicKey communicationKey;
 
     @Override
     public void onCreate(Bundle savedInstanceState){
@@ -82,11 +86,13 @@ public class MobilSign extends Activity {
                 // porovna PIN kody
                 if(!pin1.equals(pin2)){
                     // pokial sa nerovnaju vypise sa chyba
-                    messageBox("Zadané PIN kódy nie sú rovnaké.Zadajte prosím rovnaké PIN kódy.", "Chyba", "OK");
+                    messageBox("Zadané PIN kódy nie sú rovnaké. Zadajte prosím rovnaké PIN kódy.", "Chyba", "OK");
+                } else if(pin1.length() < 4){
+                    // PIN musi mat aspon 4 znaky
+                    messageBox("PIN kód musí mať aspoň 4 znaky.", "Chyba", "OK");
                 } else{
                     // pokial sa rovnaju pokysi sa zapisat heslo do suboru
                     try{
-                        // TODO heslo treba hashovat a kontrolovat ci ma aspon 4 znaky
                         String hashPass = hashPassword(pin1, ""); // heslo sa zahesuje a vrati sa spet hash a salt
                         StringTokenizer tokens = new StringTokenizer(hashPass, "|"); // rozbije string na heslo a salt
                         String pass = tokens.nextToken();// ulozi heslo
@@ -235,26 +241,28 @@ public class MobilSign extends Activity {
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-
+		String modulus = null;
 		if (scanResult != null) { // pokial sa nieco naskenovalo tak sa to spracuje
             String QRcodeString;
             try{
                 QRcodeString = scanResult.getContents() == null ? "0" : scanResult.getContents(); // prevediet scan do stringu, pokial scan vrati null string bude 0
-                String modulus = QRcodeString;
+				modulus = QRcodeString;
+				// QR kode sa zahesuje a prevedie na HEX aby sa mohol odoslat na server na sparovanie
                 MessageDigest md = MessageDigest.getInstance("SHA-1");
-                byte[] digest = md.digest(modulus.getBytes("UTF-8"));
+                byte[] digest = md.digest(QRcodeString.getBytes("UTF-8"));
                 QRcodeString = byteArrayToHexString(digest);
             }catch(Exception e){
                 e.printStackTrace();
                 return;
             }
 
-			if (QRcodeString.equalsIgnoreCase("0")) { // pokial je string 0, vypise sa chyba
+			if (QRcodeString.equalsIgnoreCase("0") || modulus == null) { // pokial je string 0, vypise sa chyba
+				messageBox("Nepodarilo sa zosnimat QR kod.", "Chyba", "OK");
 				Toast.makeText(this, "Problem to get the  contant Number", Toast.LENGTH_LONG).show();
 			} else { // pokial je string spravny vypise sa na obrazovku
 				String QRcodeStringEdit = "PAIR:"+QRcodeString; // prida pred string z QR kodu retazec PAIR aby server vedel, ze sa idem parovat
-                displayMsg(QRcodeStringEdit);
-                communicator.sendMessageToServer(QRcodeStringEdit);
+                communicator.sendMessageToServer(QRcodeStringEdit); // posle ziadost o sparovanie na server
+				communicationKey = getKeyFromModulus(modulus); // z modulusu z QR kodu zisti kluc, ktory bude sifrovat komunikaciu a ten si nastavi do atributu
 			}
 		} else { // pokial QR code je null, vypise sa chyba
 			Toast.makeText(this, "Problem to secan the barcode.",
@@ -368,6 +376,27 @@ public class MobilSign extends Activity {
             messageBox("Error code: 2 " + e.getMessage(), "Chyba", "OK");
         }
         return encryptedString;
+    }
+
+	/**
+	 * Vyrobi z modulusu kluc a vrati ho
+	 * @param pModulus
+	 * @return
+	 */
+    private PublicKey getKeyFromModulus(String pModulus){
+		PublicKey key = null;
+		messageBox(pModulus,"asd0", "OK");
+		try{
+			BigInteger modulus = new BigInteger(pModulus, 16);
+			BigInteger exponent = new BigInteger("65537", 16); // exponent je vzdy 65537
+			RSAPublicKeySpec publicSpec = new RSAPublicKeySpec(modulus, exponent);
+			KeyFactory factory = KeyFactory.getInstance("RSA");
+			key = factory.generatePublic(publicSpec);
+		} catch(Exception e){
+			messageBox("Error code: 3 " + e.getMessage(), "Chyba", "OK");
+			e.printStackTrace();
+		}
+		return key;
     }
 
 }
