@@ -39,14 +39,15 @@ public class MobilSign extends Activity {
 
     // vykonava celu komunikaciu so severom (klientom)
     private Communicator communicator;
-
+	// kluc aplikacie, ktorym sa bude sifrovat komunikacia
+	private PublicKey communicationKey;
     // vypisuje hlasky
     private AlertDialog.Builder messageBox;
-    private PublicKey communicationKey;
 
     @Override
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+
         // inicializacia atributov potrebnych v celej triede
         this.handler = new Handler();
         messageBox = new AlertDialog.Builder(this);
@@ -62,8 +63,6 @@ public class MobilSign extends Activity {
             messageBox("Error code: 0", "Chyba", "OK");
             e.printStackTrace();
         }
-
-
     }
 
     /**
@@ -105,7 +104,6 @@ public class MobilSign extends Activity {
                         fos.close();
                         messageBox("Váš PIN kód bol uložený. Môžete sa prihlásiť.", "Správa", "OK");
                         login();
-
                     } catch (Exception e){
                         messageBox("Error code: 1 " + e.getMessage(), "Chyba", "OK");
                         e.printStackTrace();
