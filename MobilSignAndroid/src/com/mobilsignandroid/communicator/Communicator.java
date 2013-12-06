@@ -3,7 +3,11 @@ package com.mobilsignandroid.communicator;
 import com.mobilsignandroid.MobilSign;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.Socket;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPublicKey;
 
 
 public class Communicator {
@@ -14,6 +18,7 @@ public class Communicator {
     private Sender clientSender;
     private Listener clientListener;
     private MobilSign activity;
+	private RSAPublicKey communicationKey; // kluc aplikacie, ktorym sa bude sifrovat komunikacia
 
     /********************** Konstruktory **********************/
     public Communicator(String serverAddress, int serverPort, MobilSign activity) {
@@ -43,25 +48,26 @@ public class Communicator {
         return this.serverPort;
     }
 
+	public RSAPublicKey getKey(){
+		return this.communicationKey;
+	}
+
+	public void setKey(RSAPublicKey key){
+		this.communicationKey = key;
+	}
+
+
     /************************ Metody **********************/
 
     /**
      * Pripoji sa na server
      */
     public void connectToServer() throws IOException {
-       // try {
-            this.socket = new Socket(this.serverAddress,this.serverPort);
-            this.clientSender = new Sender(socket);
-            this.clientListener = new Listener(socket);
-            this.clientListener.start();
-            this.clientSender.start();
-            /*
-        } catch (IOException ioe) {
-            System.err.println("Can not establish connection to " + serverAddress + ":" + serverPort + "\n" + ioe.getMessage());
-            ioe.printStackTrace(System.out);
-            System.exit(-1);
-        }
-        */
+        this.socket = new Socket(this.serverAddress,this.serverPort);
+        this.clientSender = new Sender(socket);
+        this.clientListener = new Listener(socket);
+        this.clientListener.start();
+        this.clientSender.start();
         receiveMsg(); // spusti sa prijimanie sprav, pokial boli vyslane
     }
 
@@ -82,6 +88,21 @@ public class Communicator {
             }
         }).start();
     }
+
+	/**
+	 * Odosle parovaci request na server.
+	 */
+	public void pairRequest() {
+		try {
+			BigInteger modulus = this.getKey().getModulus();
+			MessageDigest md = MessageDigest.getInstance("SHA1");
+			md.update(modulus.toByteArray());
+			String sha1 = new BigInteger(1, md.digest()).toString(16);
+			sendMessageToServer("PAIR:" + sha1);
+		} catch (NoSuchAlgorithmException ex) {
+			ex.printStackTrace();
+		}
+	}
 
     /**
      * Spusti vlakno prijimajuce spravy zo servera

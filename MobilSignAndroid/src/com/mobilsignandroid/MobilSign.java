@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Base64;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -14,6 +15,7 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.mobilsignandroid.communicator.Communicator;
+import com.mobilsignandroid.communicator.Crypto;
 import com.mobilsignandroid.zxing.IntentIntegrator;
 import com.mobilsignandroid.zxing.IntentResult;
 
@@ -23,8 +25,8 @@ import java.io.FileOutputStream;
 import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
-import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.StringTokenizer;
 
@@ -38,8 +40,6 @@ public class MobilSign extends Activity {
 
     // vykonava celu komunikaciu so severom (klientom)
     private Communicator communicator;
-	// kluc aplikacie, ktorym sa bude sifrovat komunikacia
-	private PublicKey communicationKey;
     // vypisuje hlasky
     private AlertDialog.Builder messageBox;
 
@@ -47,6 +47,7 @@ public class MobilSign extends Activity {
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
 
+		messageBox = new AlertDialog.Builder(this);
         // inicializacia atributov potrebnych v celej triede
         this.handler = new Handler();
         try{
@@ -57,7 +58,7 @@ public class MobilSign extends Activity {
                 register(); // aplikacia je spustena prvy krat, prejde sa na registracny formular
             }
         } catch (Exception e){
-            messageBox("Error code: 0", "Chyba", "OK");
+            messageBox("Error code: 0 " + e.getMessage(), "Chyba", "OK");
             e.printStackTrace();
         }
     }
@@ -187,12 +188,13 @@ public class MobilSign extends Activity {
         messageView.setAdapter(messageList);
         communicator.receiveMsg(); // spusti vlakno prijimajuce spravy
 
-        /**** udalosti pre buttny ****/
+        /* udalosti pre button poslanie spravy */
         Button btnSend = (Button) findViewById(R.id.btn_Send);
         btnSend.setOnClickListener(new View.OnClickListener() { // odosle spravu
             public void onClick(View v) {
                 final EditText txtEdit = (EditText) findViewById(R.id.txt_inputText);
                 String msgToSend = txtEdit.getText().toString();
+				msgToSend = "SEND:" + Base64.encodeToString(Crypto.encrypt(msgToSend.getBytes(), communicator.getKey()), Base64.NO_WRAP);
                 if(msgToSend != null){
                     communicator.sendMessageToServer(msgToSend);
                     messageView.smoothScrollToPosition(messageList.getCount() - 1);
@@ -200,6 +202,7 @@ public class MobilSign extends Activity {
             }
         });
 
+		/* udalost pre button na odfotenie QR kodu */
         Button btnQR = (Button) findViewById(R.id.btnQR);
         btnQR.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -215,7 +218,10 @@ public class MobilSign extends Activity {
      */
     public void displayMsg(String msg) {
         if (msg.length() > 5 && msg.substring(0, 5).equals("SEND:")) { //niekto nieco posiela
-            msg = "Message recieved: [" + msg.substring(5) + "]";
+			byte[] data = Base64.decode(msg.substring(5), Base64.DEFAULT);
+			byte[] decrypted = Crypto.decrypt(data, communicator.getKey());
+			String text = new String(decrypted);
+            msg = "Message recieved: [" + text + "]";
         } else if (msg.length() > 5 && msg.substring(0, 5).equals("RESP:")) { //niekto odpoveda na nasu spravu
             if (msg.substring(5).equals("paired")) {
                 msg = "Response: [" + msg.substring(5) + "]";
@@ -236,29 +242,22 @@ public class MobilSign extends Activity {
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-		String modulus = null;
 		if (scanResult != null) { // pokial sa nieco naskenovalo tak sa to spracuje
-            String QRcodeString;
+			BigInteger modulus;
             try{
-                QRcodeString = scanResult.getContents() == null ? "0" : scanResult.getContents(); // prevediet scan do stringu, pokial scan vrati null string bude 0
-				modulus = QRcodeString;
-				// QR kode sa zahesuje a prevedie na HEX aby sa mohol odoslat na server na sparovanie
-                MessageDigest md = MessageDigest.getInstance("SHA-1");
-                byte[] digest = md.digest(QRcodeString.getBytes("UTF-8"));
-                QRcodeString = byteArrayToHexString(digest);
+				if(scanResult.getContents() == null){
+					messageBox("Chyba", "Nepodarilo sa zosnímať QR kód. Skúste to prosím znovu.", "OK");
+					return;
+				}
+                String QrCode = scanResult.getContents(); // prevediet scan do stringu, pokial scan vrati null string bude 0
+				byte[] modulusByteArray = Base64.decode(QrCode, Base64.DEFAULT);
+				modulus = new BigInteger(modulusByteArray);
+				communicator.setKey(getKeyFromModulus(modulus)); // z modulusu z QR kodu zisti kluc, ktory bude sifrovat komunikaciu a ten si nastavi do atributu
+				communicator.pairRequest();
             }catch(Exception e){
                 e.printStackTrace();
                 return;
             }
-
-			if (QRcodeString.equalsIgnoreCase("0") || modulus == null) { // pokial je string 0, vypise sa chyba
-				messageBox("Nepodarilo sa zosnimat QR kod.", "Chyba", "OK");
-				Toast.makeText(this, "Problem to get the  contant Number", Toast.LENGTH_LONG).show();
-			} else { // pokial je string spravny vypise sa na obrazovku
-				String QRcodeStringEdit = "PAIR:"+QRcodeString; // prida pred string z QR kodu retazec PAIR aby server vedel, ze sa idem parovat
-                communicator.sendMessageToServer(QRcodeStringEdit); // posle ziadost o sparovanie na server
-				communicationKey = getKeyFromModulus(modulus); // z modulusu z QR kodu zisti kluc, ktory bude sifrovat komunikaciu a ten si nastavi do atributu
-			}
 		} else { // pokial QR code je null, vypise sa chyba
 			Toast.makeText(this, "Problem to secan the barcode.",
 					Toast.LENGTH_LONG).show();
@@ -378,14 +377,13 @@ public class MobilSign extends Activity {
 	 * @param pModulus
 	 * @return
 	 */
-    private PublicKey getKeyFromModulus(String pModulus){
-		PublicKey key = null;
+    private RSAPublicKey getKeyFromModulus(BigInteger pModulus){
+		RSAPublicKey key = null;
 		try{
-			BigInteger modulus = new BigInteger(pModulus, 16);
-			BigInteger exponent = new BigInteger("65537", 16); // exponent je vzdy 65537
-			RSAPublicKeySpec publicSpec = new RSAPublicKeySpec(modulus, exponent);
+			//BigInteger modulus = new BigInteger(pModulus + "", 16); // vyrobi BigInteger z exponenta 65537
+			RSAPublicKeySpec spec = new RSAPublicKeySpec(pModulus, new BigInteger("65537"));
 			KeyFactory factory = KeyFactory.getInstance("RSA");
-			key = factory.generatePublic(publicSpec);
+			key = (RSAPublicKey)factory.generatePublic(spec);
 		} catch(Exception e){
 			messageBox("Error code: 3 " + e.getMessage(), "Chyba", "OK");
 			e.printStackTrace();
