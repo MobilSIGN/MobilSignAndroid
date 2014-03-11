@@ -77,16 +77,16 @@ public class Communicator {
      * @param str - odosielana sprava
      */
     public void sendMessageToServer(String str) {
-        final String str1 = str;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                if (clientSender == null) {
-                    System.out.println("Sprava je null");
-                }
-                clientSender.sendMessage(str1);
-            }
-        }).start();
+		final String str1 = str;
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				if (clientSender == null) {
+					System.out.println("Sprava je null");
+				}
+				clientSender.putMesssageToQueue(str1);
+			}
+		}).start();
     }
 
 	/**

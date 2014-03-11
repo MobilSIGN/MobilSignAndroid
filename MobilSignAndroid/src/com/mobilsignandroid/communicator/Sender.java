@@ -1,5 +1,6 @@
 package com.mobilsignandroid.communicator;
 
+
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -21,10 +22,10 @@ public class Sender extends Thread {
 		}
 	}
 
-	public synchronized void sendMessage(String aMessage)
+	public synchronized void putMesssageToQueue(String message)
 	{
 		try{
-			mMessageQueue.put(aMessage);
+			mMessageQueue.put(message);
 		}
 		catch(InterruptedException ex){
 			System.err.println("Vyskytla sa chyba pri vkladani spravy do frontu sprav na odoslanie");
@@ -32,7 +33,7 @@ public class Sender extends Thread {
 		notify();
 	}
 
-	private synchronized String getNextMessageFromQueue() throws InterruptedException
+	private synchronized String getMessageFromQueue() throws InterruptedException
 	{
 		while (mMessageQueue.isEmpty()){
 			wait();
@@ -52,7 +53,7 @@ public class Sender extends Thread {
 	{
 		try {
 			while (!isInterrupted()) {
-				String message = getNextMessageFromQueue();
+				String message = getMessageFromQueue();
 				if (message != null) {
 					sendMessageToClient(message);
 				}
