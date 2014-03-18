@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -46,6 +47,10 @@ public class MobilSign extends Activity {
 	private Crypto crypto;
 	// vypisuje hlasky
 	private AlertDialog.Builder messageBox;
+
+	private PrivateKey privateKey;
+	private RSAPublicKey publicKey;
+	private RSAPublicKey QRPublicKey;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState){
@@ -234,6 +239,18 @@ public class MobilSign extends Activity {
 			if (msg.substring(5).equals("paired")) {
 				msg = "Response: [" + msg.substring(5) + "]";
 			}
+		} else if (msg.length() > 5 && msg.substring(0, 5).equals("MPUB:")) { //niekto odpoveda na nasu spravu
+			crypto.setKey(privateKey);
+			String decrypt1 = crypto.decrypt(msg.substring(5));
+			crypto.setKey(QRPublicKey);
+			String decrypt2 = crypto.decrypt(decrypt1);
+			if(decrypt2.equals(publicKey.getModulus()+"")){
+				crypto.setKey(privateKey);
+				//communicator.sendMessageToServer(privateKey);
+			} else{
+				Log.e("CHYBA", "CHYBA displayMsg"); // TODO ukoncit spojenie a poslat spravu, ze sa detekoval utok
+			}
+			return;
 		} else {
 			msg = "Unknown message: [" + msg + "]";
 		}
@@ -260,17 +277,17 @@ public class MobilSign extends Activity {
 				String QrCode = scanResult.getContents(); // prevediet scan do stringu, pokial scan vrati null string bude 0
 				byte[] modulusByteArray = Base64.decode(QrCode, Base64.DEFAULT);
 				modulus = new BigInteger(modulusByteArray);
-				RSAPublicKey key = getKeyFromModulus(modulus);
-				communicator.setKey(key); // z modulusu z QR kodu zisti kluc, ktory bude sifrovat komunikaciu a ten si nastavi do atributu
+				QRPublicKey = getKeyFromModulus(modulus);
+				communicator.setKey(QRPublicKey); // z modulusu z QR kodu zisti kluc, ktory bude sifrovat komunikaciu a ten si nastavi do atributu
 				communicator.pairRequest();
-				crypto = new Crypto(key);
+				crypto = new Crypto(QRPublicKey);
 
 				KeyPairGenerator generatorRSA = KeyPairGenerator.getInstance("RSA"); // vytvori instanciu generatora RSA klucov
 				generatorRSA.initialize(2048, new SecureRandom()); // inicializuje generator 2048 bitovych RSA klucov
 				KeyPair keyRSA = generatorRSA.generateKeyPair(); // vygeneruje klucovi par
-				PrivateKey privateKey = keyRSA.getPrivate(); // kluc desktopovej aplikacie je sukromny kluc z klucoveho paru
-				RSAPublicKey publicKey = (RSAPublicKey) keyRSA.getPublic(); // vrati verejny kluc type RSAPublicKey, lebo z neho mozem dostat modulus
-				communicator.sendMessageToServer(publicKey.getModulus()+"");
+				privateKey = keyRSA.getPrivate(); // kluc desktopovej aplikacie je sukromny kluc z klucoveho paru
+				publicKey = (RSAPublicKey) keyRSA.getPublic(); // vrati verejny kluc type RSAPublicKey, lebo z neho mozem dostat modulus
+				communicator.sendMessageToServer("MPUB:" +  crypto.encrypt(publicKey.getModulus()+""));
 
 			}catch(Exception e){
 				e.printStackTrace();
