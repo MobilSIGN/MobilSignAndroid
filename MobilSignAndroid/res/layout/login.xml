@@ -46,5 +46,6 @@
             android:layout_marginTop="48dp"
             android:layout_alignRight="@+id/textView"
             android:layout_alignLeft="@+id/textView" />
-    </RelativeLayout>
+
+	</RelativeLayout>
 </LinearLayout>

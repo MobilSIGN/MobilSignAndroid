@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import com.mobilsignandroid.communicator.Communicator;
 import com.mobilsignandroid.communicator.Crypto;
+import com.mobilsignandroid.keystore.KeyStore;
 import com.mobilsignandroid.zxing.IntentIntegrator;
 import com.mobilsignandroid.zxing.IntentResult;
 
@@ -31,11 +32,15 @@ import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.StringTokenizer;
 
+//import java.security.KeyStore;
+
 public class MobilSign extends Activity {
 	static final String ACCOUNT_FILE = "acount_info"; // nazov suboru s pouzivatelskymi informaciami
+	static final String KEY_FILE_NAME = "mobileKey";
 
 	// prvky potrebne pre list sprav
 	private Handler handler;
@@ -70,6 +75,7 @@ public class MobilSign extends Activity {
 			messageBox("Error code: 0 " + e.getMessage(), "Chyba", "OK");
 			e.printStackTrace();
 		}
+
 	}
 
 	/**
@@ -127,6 +133,22 @@ public class MobilSign extends Activity {
 	private void login(){
 		setContentView(R.layout.login);
 		messageList = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+
+		try{ // posklada privatny kluc, ak ho najde ulozeny
+			KeyStore ks = KeyStore.getInstance();
+			if(ks.contains(KEY_FILE_NAME)){
+				byte[] keyBytes = ks.get(KEY_FILE_NAME);
+				PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+				KeyFactory rsaFact = KeyFactory.getInstance("RSA");
+				privateKey = rsaFact.generatePrivate(spec);
+				messageBox("Načítal som kľúč z úložiska.", "Success", "OK");
+			} else{
+				messageBox("Nenačítal som kľúč z úložiska, treba sa zpárovať.", "Success", "OK");
+			}
+		} catch(Exception e){
+			messageBox("Chyba pri získavan kľúča z úložiska: " + e.getMessage(), "Error", "OK");
+			e.printStackTrace();
+		}
 
 		// po kliku na tlacidlo prihlasit v prihlasovacom layoute sa pouzivatel pokusi prihlasit
 		Button btnLogin = (Button) findViewById(R.id.login);
@@ -246,7 +268,13 @@ public class MobilSign extends Activity {
 			String decrypt2 = crypto.decrypt(decrypt1);
 			if(decrypt2.equals(publicKey.getModulus()+"")){
 				crypto.setKey(privateKey);
-				//communicator.sendMessageToServer(privateKey);
+				startActivity(new Intent("android.credentials.UNLOCK"));
+				KeyStore ks = KeyStore.getInstance();
+				boolean success = ks.put(KEY_FILE_NAME, privateKey.getEncoded());
+				if (!success) {
+					messageBox("Neporadilo sa uložiť kľúč", "Chyba", "OK");
+					Log.e("PANTA", "PANTA");
+				}
 			} else{
 				Log.e("CHYBA", "CHYBA displayMsg"); // TODO ukoncit spojenie a poslat spravu, ze sa detekoval utok
 			}
