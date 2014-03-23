@@ -21,10 +21,25 @@
             android:label="@string/title_mobilSign" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+		<activity
+			android:name=".Login"
+			android:label="@string/title_login" >
+		</activity>
+		<activity
+			android:name=".Register"
+			android:label="@string/title_register" >
+		</activity>
+		<activity
+			android:name=".Connect"
+			android:label="@string/title_connect" >
+		</activity>
+		<activity
+			android:name=".MainApp"
+			android:label="@string/title_mainapp" >
+		</activity>
     </application>
 
 </manifest>

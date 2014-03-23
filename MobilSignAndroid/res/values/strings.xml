@@ -1,8 +1,12 @@
 <resources>
-
     <string name="app_name">MobilSign</string>
     <string name="menu_settings">Settings</string>
     <string name="title_mobilSign">MobilSign</string>
-    <string name="login">Prihlásiť</string>
-
+    <string name="title_login">Login</string>
+    <string name="title_register">Register</string>
+    <string name="title_connect">Connect</string>
+    <string name="title_mainapp">MainApp</string>
+	<string name="login">Prihlásiť</string>
+	<string name="account_file">acount_info</string>
+	<string name="key_file">mobileKey</string>
 </resources>

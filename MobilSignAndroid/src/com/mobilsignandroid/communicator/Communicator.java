@@ -1,8 +1,9 @@
 package com.mobilsignandroid.communicator;
 
-import com.mobilsignandroid.MobilSign;
+import com.mobilsignandroid.MainApp;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.security.MessageDigest;
@@ -10,26 +11,27 @@ import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
 
 
-public class Communicator {
+public class Communicator implements Serializable {
 
     private String serverAddress; // ip adresa servera
     private int serverPort; // port na ktorom server pocuva
     private Socket socket;
     private Sender clientSender;
     private Listener clientListener;
-    private MobilSign activity;
+    private MainApp activity;
 	private RSAPublicKey communicationKey; // kluc aplikacie, ktorym sa bude sifrovat komunikacia
 
     /********************** Konstruktory **********************/
-    public Communicator(String serverAddress, int serverPort, MobilSign activity) {
+    public Communicator(String serverAddress, int serverPort, MainApp activity) {
         this.serverAddress = serverAddress;
         this.serverPort = serverPort;
         this.activity = activity;
     }
 
-    public Communicator(MobilSign activity){
+    public Communicator(MainApp activity){
         this.activity = activity;
     }
+
 
     /********************** Gettery, settery **********************/
     public void setServerAddress(String serverAddress){
