@@ -2,6 +2,7 @@ package com.mobilsignandroid;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -58,28 +59,45 @@ public class MainApp extends Activity {
 	@Override
 	public void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.main);
 
+		// inicializuje komunikator
+		String ipAddress = getIntent().getStringExtra("ipAddress");
+		int port = Integer.parseInt(getIntent().getStringExtra("port"));
+		communicator = new Communicator(ipAddress, port, this);
+
+		// pokusi sa pripojit na server
+		try{
+			communicator.connectToServer();
+		} catch (IOException e){
+			AlertDialog.Builder builder = new AlertDialog.Builder(this);
+			builder.setTitle("Chyba pripojenia");
+			builder.setMessage("Neporadilo sa pripojiť na server.");
+			builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					startActivity(new Intent(MainApp.this, Connect.class));
+					dialog.dismiss();
+				}
+
+			});
+			AlertDialog alert = builder.create();
+			alert.show();
+			return;
+		}
+		communicator.receiveMsg(); // spusti vlakno prijimajuce spravy
+
+		// nastavi view a zinicializuje potrebne premenne
+		setContentView(R.layout.main);
 		handler = new Handler();
 		messageBox = new AlertDialog.Builder(this);
 		messageList = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
 		messageView = (ListView) findViewById(R.id.msgQueue);
 		messageView.setAdapter(messageList);
 
-		String ipAddress = getIntent().getStringExtra("ipAddress");
-		int port = Integer.parseInt(getIntent().getStringExtra("port"));
-		communicator = new Communicator(ipAddress, port, this);
-
+		// posklada privatny kluc, ak ho najde ulozeny a nastavi ho pre krytograficke operacie
 		try{
-			communicator.connectToServer();
-		} catch (IOException e){
-			messageBox("Nepodarilo sa pripojit na server.", "Error", "OK");
-			startActivity(new Intent(this, Connect.class));
-		}
-		communicator.receiveMsg(); // spusti vlakno prijimajuce spravy
-
-		try{ // posklada privatny kluc, ak ho najde ulozeny
 			privateKey = getPrivateKey(getString(R.string.key_file));
+			crypto.setKey(privateKey);
 		} catch(FileNotFoundException e){
 			messageBox("Chyba pri získavan kľúča z úložiska: " + e.getMessage(), "Error", "OK");
 			e.printStackTrace();
@@ -113,7 +131,6 @@ public class MainApp extends Activity {
 				integrator.initiateScan();
 			}
 		});
-
 	}
 
 	@Override
@@ -130,16 +147,15 @@ public class MainApp extends Activity {
 				byte[] modulusByteArray = Base64.decode(QrCode, Base64.DEFAULT);
 				modulus = new BigInteger(modulusByteArray);
 				QRPublicKey = getKeyFromModulus(modulus);
-				communicator.setKey(QRPublicKey); // z modulusu z QR kodu zisti kluc, ktory bude sifrovat komunikaciu a ten si nastavi do atributu
-				communicator.pairRequest();
+				communicator.pairRequest(QRPublicKey);
 				crypto = new Crypto(QRPublicKey);
 
 				KeyPairGenerator generatorRSA = KeyPairGenerator.getInstance("RSA"); // vytvori instanciu generatora RSA klucov
 				generatorRSA.initialize(2048, new SecureRandom()); // inicializuje generator 2048 bitovych RSA klucov
 				KeyPair keyRSA = generatorRSA.generateKeyPair(); // vygeneruje klucovi par
-				privateKey = keyRSA.getPrivate(); // kluc desktopovej aplikacie je sukromny kluc z klucoveho paru
-				publicKey = (RSAPublicKey) keyRSA.getPublic(); // vrati verejny kluc type RSAPublicKey, lebo z neho mozem dostat modulus
-				communicator.sendMessageToServer("MPUB:" +  crypto.encrypt(publicKey.getModulus()+""));
+				privateKey = keyRSA.getPrivate();
+				publicKey = (RSAPublicKey) keyRSA.getPublic();
+				communicator.sendMessageToServer("MPUB:" +  crypto.encrypt(publicKey.getModulus()+"")); // odosle verejny kluc do PC sifrovany verejnym klucom z QR kodu
 			}catch(Exception e){
 				e.printStackTrace();
 				return;
@@ -161,7 +177,7 @@ public class MainApp extends Activity {
 			if (msg.substring(5).equals("paired")) {
 				msg = "Response: [" + msg.substring(5) + "]";
 			}
-		} else if (msg.length() > 5 && msg.substring(0, 5).equals("MPUB:")) { //niekto odpoveda na nasu spravu
+		} else if (msg.length() > 5 && msg.substring(0, 5).equals("MPUB:")) { // posiela sa novy kluc
 			crypto.setKey(privateKey);
 			String decrypt1 = crypto.decrypt(msg.substring(5));
 			crypto.setKey(QRPublicKey);
@@ -171,7 +187,7 @@ public class MainApp extends Activity {
 				if(!savePrivateKey(privateKey, getString(R.string.key_file))){
 					messageBox("Neporadilo sa uložiť kľúč", "Chyba", "OK");
 				}
-			} else{
+			} else {
 				Log.e("CHYBA", "CHYBA displayMsg"); // TODO ukoncit spojenie a poslat spravu, ze sa detekoval utok
 			}
 			return;
@@ -188,6 +204,14 @@ public class MainApp extends Activity {
 		});
 	}
 
+	/**
+	 * Vysklada sukromny kluc z bezpecneho uloziska, pokial ho tamn ajde
+	 * @param fileName
+	 * @return PrivateKey
+	 * @throws FileNotFoundException
+	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeySpecException
+	 */
 	public PrivateKey getPrivateKey(String fileName) throws FileNotFoundException, NoSuchAlgorithmException, InvalidKeySpecException{
 		startActivity(new Intent("android.credentials.UNLOCK"));
 		KeyStore ks = KeyStore.getInstance();
@@ -201,6 +225,12 @@ public class MainApp extends Activity {
 		}
 	}
 
+	/**
+	 * Ulozi sukromny kluc do bezpecneho uloziska
+	 * @param key
+	 * @param fileName
+	 * @return
+	 */
 	public boolean savePrivateKey(PrivateKey key, String fileName){
 		startActivity(new Intent("android.credentials.UNLOCK"));
 		KeyStore ks = KeyStore.getInstance();
@@ -215,12 +245,11 @@ public class MainApp extends Activity {
 	public RSAPublicKey getKeyFromModulus(BigInteger pModulus){
 		RSAPublicKey key = null;
 		try{
-			//BigInteger modulus = new BigInteger(pModulus + "", 16); // vyrobi BigInteger z exponenta 65537
 			RSAPublicKeySpec spec = new RSAPublicKeySpec(pModulus, new BigInteger("65537"));
 			KeyFactory factory = KeyFactory.getInstance("RSA");
 			key = (RSAPublicKey)factory.generatePublic(spec);
 		} catch(Exception e){
-			//messageBox("Error code: 3 " + e.getMessage(), "Chyba", "OK");
+			messageBox("Error code: 3 " + e.getMessage(), "Chyba", "OK");
 			e.printStackTrace();
 		}
 		return key;

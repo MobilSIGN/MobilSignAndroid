@@ -19,7 +19,6 @@ public class Communicator implements Serializable {
     private Sender clientSender;
     private Listener clientListener;
     private MainApp activity;
-	private RSAPublicKey communicationKey; // kluc aplikacie, ktorym sa bude sifrovat komunikacia
 
     /********************** Konstruktory **********************/
     public Communicator(String serverAddress, int serverPort, MainApp activity) {
@@ -50,15 +49,6 @@ public class Communicator implements Serializable {
         return this.serverPort;
     }
 
-	public RSAPublicKey getKey(){
-		return this.communicationKey;
-	}
-
-	public void setKey(RSAPublicKey key){
-		this.communicationKey = key;
-	}
-
-
     /************************ Metody **********************/
 
     /**
@@ -70,7 +60,6 @@ public class Communicator implements Serializable {
         this.clientListener = new Listener(socket);
         this.clientListener.start();
         this.clientSender.start();
-        receiveMsg(); // spusti sa prijimanie sprav, pokial boli vyslane
     }
 
 
@@ -94,9 +83,9 @@ public class Communicator implements Serializable {
 	/**
 	 * Odosle parovaci request na server.
 	 */
-	public void pairRequest() {
+	public void pairRequest(RSAPublicKey key) {
 		try {
-			BigInteger modulus = this.getKey().getModulus();
+			BigInteger modulus = key.getModulus();
 			MessageDigest md = MessageDigest.getInstance("SHA1");
 			md.update(modulus.toByteArray());
 			String sha1 = new BigInteger(1, md.digest()).toString(16);
@@ -125,7 +114,6 @@ public class Communicator implements Serializable {
                 }
             }
         }).start();
-
     }
 
 }

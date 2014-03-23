@@ -8,6 +8,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Created by Michal on 23.3.2014.
  */
@@ -30,10 +33,14 @@ public class Connect extends Activity{
 				String ipAddress = etIpAddress.getText().toString();
 				int port = Integer.parseInt(etPort.getText().toString());
 				if(ipAddress != null){
-					Intent intent = new Intent(Connect.this, MainApp.class);
-					intent.putExtra("port", port+"");
-					intent.putExtra("ipAddress", ipAddress);
-					startActivity(intent);
+					if(ip(ipAddress)){
+						Intent intent = new Intent(Connect.this, MainApp.class);
+						intent.putExtra("port", port+"");
+						intent.putExtra("ipAddress", ipAddress);
+						startActivity(intent);
+					} else {
+						messageBox("Zadaná IP adresa má zlý formát.", "Error", "OK");
+					}
 				}
 			}
 		});
@@ -50,6 +57,17 @@ public class Connect extends Activity{
 		messageBox.setTitle(title);
 		messageBox.setPositiveButton(positiveButton, null);
 		messageBox.create().show();
+	}
+
+	/**
+	 * Overi zadana IP adresa ma spravny format
+	 * @param text
+	 * @return
+	 */
+	public boolean ip(String text) {
+		Pattern p = Pattern.compile("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
+		Matcher m = p.matcher(text);
+		return m.find();
 	}
 
 
