@@ -3,7 +3,6 @@ package com.mobilsignandroid.communicator;
 import com.mobilsignandroid.MainApp;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.security.MessageDigest;
@@ -11,7 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
 
 
-public class Communicator implements Serializable {
+public class Communicator {
 
     private String serverAddress; // ip adresa servera
     private int serverPort; // port na ktorom server pocuva
