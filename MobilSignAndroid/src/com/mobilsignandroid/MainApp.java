@@ -97,7 +97,8 @@ public class MainApp extends Activity {
 		// posklada privatny kluc, ak ho najde ulozeny a nastavi ho pre krytograficke operacie
 		try{
 			privateKey = getPrivateKey(getString(R.string.key_file));
-			crypto.setKey(privateKey);
+			crypto = new Crypto(privateKey);
+			messageBox("Súkromný kľúč bol načítaný z úložiska.", "Success", "OK");
 		} catch(FileNotFoundException e){
 			messageBox("Chyba pri získavan kľúča z úložiska: " + e.getMessage(), "Error", "OK");
 			e.printStackTrace();

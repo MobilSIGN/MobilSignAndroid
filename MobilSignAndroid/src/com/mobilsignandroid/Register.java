@@ -13,7 +13,6 @@ import java.io.FileOutputStream;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.StringTokenizer;
 
 /**
  * Created by Michal on 23.3.2014.
@@ -48,10 +47,9 @@ public class Register extends Activity{
 				} else{
 					// pokial sa rovnaju pokysi sa zapisat heslo do suboru
 					try{
-						String hashPass = hashPassword(pin1, ""); // heslo sa zahesuje a vrati sa spet hash a salt
-						StringTokenizer tokens = new StringTokenizer(hashPass, "|"); // rozbije string na heslo a salt
-						String pass = tokens.nextToken();// ulozi heslo
-						String salt = tokens.nextToken();// ulozi salt
+						String[] hashArray = hashPassword(pin1, ""); // heslo sa zahesuje a vrati sa spet hash a salt
+						String pass = hashArray[0];// ulozi heslo
+						String salt = hashArray[1];// ulozi salt
 						String toFile = "pass:"+pass+"|salt:"+salt; // hash aj salt sa spoja a ulozia do premennej
 
 						// hash aj salt sa ulozia do suboru
@@ -59,7 +57,7 @@ public class Register extends Activity{
 						fos.write(toFile.getBytes());
 						fos.close();
 						messageBox("Váš PIN kód bol uložený. Môžete sa prihlásiť.", "Správa", "OK");
-						startActivity(new Intent("Login"));
+						startActivity(new Intent(Register.this,Login.class));
 					} catch (Exception e){
 						messageBox("Error code: 1 " + e.getMessage(), "Chyba", "OK");
 						e.printStackTrace();
@@ -88,8 +86,8 @@ public class Register extends Activity{
 	 * @param salt - sol, pridavane h hashu (kvoli bezpecnosti)
 	 * @return hesovane heslo
 	 */
-	public String hashPassword(String password, String salt){
-		String encryptedString = "";
+	public String[] hashPassword(String password, String salt){
+		String[] hashArray = new String[2];
 		try{
 			// pokial je sol prazdna vygeneruje ju
 			if(salt.equals("")){
@@ -109,11 +107,11 @@ public class Register extends Activity{
 				if(hex.length() == 1) hexString.append('0');
 				hexString.append(hex);
 			}
-			encryptedString = hexString.toString();
-			encryptedString += "|"+salt;
+			hashArray[0] = hexString.toString();
+			hashArray[1] = salt;
 		}catch(Exception e){
 			messageBox("Error code: 2 " + e.getMessage(), "Chyba", "OK");
 		}
-		return encryptedString;
+		return hashArray;
 	}
 }

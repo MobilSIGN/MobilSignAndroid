@@ -39,9 +39,8 @@ public class Login extends Activity {
 				// ziska sa zadany PIN
 				final EditText etPin = (EditText) findViewById(R.id.pin);
 				String pinGiven = etPin.getText().toString();
-				String pinSaltGiven = hashPassword(pinGiven, saltOrigin); // zahesuje zadany pin s danym saltom
-				StringTokenizer tokensGiven = new StringTokenizer(pinSaltGiven, "|"); // rozbije string na pin a salt
-				pinGiven = tokensGiven.nextToken();// ulozi pin prijaty od uzivatela
+				String[] hashArray = hashPassword(pinGiven, saltOrigin); // zahesuje zadany pin s danym saltom
+				pinGiven = hashArray[0];// ulozi pin prijaty od uzivatela
 
 				// PIN sa porovna z PINom ulozenym v subore s autentifikacnymi udajmi
 				if(!pinGiven.equals(pinOrigin)){
@@ -95,8 +94,8 @@ public class Login extends Activity {
 	 * @param salt - sol, pridavane h hashu (kvoli bezpecnosti)
 	 * @return hesovane heslo
 	 */
-	public String hashPassword(String password, String salt){
-		String encryptedString = "";
+	public String[] hashPassword(String password, String salt){
+		String[] hashArray = new String[2];
 		try{
 			// pokial je sol prazdna vygeneruje ju
 			if(salt.equals("")){
@@ -116,12 +115,12 @@ public class Login extends Activity {
 				if(hex.length() == 1) hexString.append('0');
 				hexString.append(hex);
 			}
-			encryptedString = hexString.toString();
-			encryptedString += "|"+salt;
+			hashArray[0] = hexString.toString();
+			hashArray[1] = salt;
 		}catch(Exception e){
 			messageBox("Error code: 2 " + e.getMessage(), "Chyba", "OK");
 		}
-		return encryptedString;
+		return hashArray;
 	}
 
 	/**
