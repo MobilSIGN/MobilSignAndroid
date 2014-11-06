@@ -35,6 +35,9 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 
+import static com.mobilsignandroid.Consts.FIND_OBJECTS;
+import static com.mobilsignandroid.Consts.MESSAGE_PREFIX_LENGTH;
+
 public class MainApp extends Activity {
     // trieda vykonavajuca kryptograficke operacie
     private Crypto crypto;
@@ -53,6 +56,7 @@ public class MainApp extends Activity {
     private RSAPublicKey QRPublicKey;
 
     private AlertDialog.Builder messageBox;
+    private CertificateHelper mCertificateHelper;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -135,6 +139,8 @@ public class MainApp extends Activity {
                 integrator.initiateScan();
             }
         });
+
+        mCertificateHelper = new CertificateHelper();
     }
 
     @Override
@@ -174,10 +180,13 @@ public class MainApp extends Activity {
      *
      * @param msg - neupravena sprava
      */
-    public void displayMsg(String msg) {
+    public void handleMsg(String msg) {
         if (msg.length() > 5 && msg.substring(0, 5).equals("SEND:")) { //niekto nieco posiela
             String decrypted = crypto.decrypt(msg.substring(5));
             msg = "Message recieved: [" + decrypted + "]";
+            if (msg.length() > MESSAGE_PREFIX_LENGTH + FIND_OBJECTS.length() && msg.substring(MESSAGE_PREFIX_LENGTH, MESSAGE_PREFIX_LENGTH + FIND_OBJECTS.length()).equals(FIND_OBJECTS)) {
+                mCertificateHelper.hasCertificate(msg.substring(MESSAGE_PREFIX_LENGTH + FIND_OBJECTS.length()));
+            }
         } else if (msg.length() > 5 && msg.substring(0, 5).equals("RESP:")) { //niekto odpoveda na nasu spravu
             if (msg.substring(5).equals("paired")) {
                 msg = "Response: [" + msg.substring(5) + "]";
@@ -193,7 +202,7 @@ public class MainApp extends Activity {
                     messageBox("Neporadilo sa uložiť kľúč", "Chyba", "OK");
                 }
             } else {
-                Log.e("CHYBA", "CHYBA displayMsg"); // TODO ukoncit spojenie a poslat spravu, ze sa detekoval utok
+                Log.e("CHYBA", "CHYBA handleMsg"); // TODO ukoncit spojenie a poslat spravu, ze sa detekoval utok
             }
             return;
         } else {

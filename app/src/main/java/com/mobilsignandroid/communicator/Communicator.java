@@ -103,7 +103,7 @@ public class Communicator {
             public void run() {
                 while (true) {
                     if(clientListener.hasMessage()){
-                        activity.displayMsg(clientListener.getMessage());
+                        activity.handleMsg(clientListener.getMessage());
                     }
                     try {
                         Thread.sleep(100);
