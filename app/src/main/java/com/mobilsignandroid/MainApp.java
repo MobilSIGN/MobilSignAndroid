@@ -36,7 +36,6 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 
 import static com.mobilsignandroid.Consts.FIND_OBJECTS;
-import static com.mobilsignandroid.Consts.MESSAGE_PREFIX_LENGTH;
 
 public class MainApp extends Activity {
     // trieda vykonavajuca kryptograficke operacie
@@ -141,6 +140,11 @@ public class MainApp extends Activity {
         });
 
         mCertificateHelper = new CertificateHelper();
+        try {
+            mCertificateHelper.showCertificate();
+        } catch (Exception e) {
+            System.err.println("### Exception certificate: " + e.getMessage());
+        }
     }
 
     @Override
@@ -184,9 +188,6 @@ public class MainApp extends Activity {
         if (msg.length() > 5 && msg.substring(0, 5).equals("SEND:")) { //niekto nieco posiela
             String decrypted = crypto.decrypt(msg.substring(5));
             msg = "Message recieved: [" + decrypted + "]";
-            if (msg.length() > MESSAGE_PREFIX_LENGTH + FIND_OBJECTS.length() && msg.substring(MESSAGE_PREFIX_LENGTH, MESSAGE_PREFIX_LENGTH + FIND_OBJECTS.length()).equals(FIND_OBJECTS)) {
-                mCertificateHelper.hasCertificate(msg.substring(MESSAGE_PREFIX_LENGTH + FIND_OBJECTS.length()));
-            }
         } else if (msg.length() > 5 && msg.substring(0, 5).equals("RESP:")) { //niekto odpoveda na nasu spravu
             if (msg.substring(5).equals("paired")) {
                 msg = "Response: [" + msg.substring(5) + "]";
@@ -205,6 +206,10 @@ public class MainApp extends Activity {
                 Log.e("CHYBA", "CHYBA handleMsg"); // TODO ukoncit spojenie a poslat spravu, ze sa detekoval utok
             }
             return;
+        } else if (msg.length() > 5 && msg.substring(0, 5).equals(Consts.FIND_OBJECTS)) {
+            System.out.println("#######################################################################");
+            System.out.println("### HAS CERTIFIKAT: " + mCertificateHelper.hasCertificate(crypto.decrypt(msg.substring(FIND_OBJECTS.length()))));
+            sendMessage(Consts.FIND_OBJECTS, mCertificateHelper.getCertificateIds());
         } else {
             msg = "Unknown message: [" + msg + "]";
         }
@@ -289,5 +294,11 @@ public class MainApp extends Activity {
                 messageBox.create().show();
             }
         });
+    }
+
+    private void sendMessage(String prefix, String message) {
+        String msgToSend = crypto.encrypt(message);
+        communicator.sendMessageToServer(prefix + "" + msgToSend);
+//        messageView.smoothScrollToPosition(messageList.getCount() - 1);
     }
 }
